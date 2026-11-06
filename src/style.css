@@ -68,3 +68,10 @@ table.month th{background:#eee}table.month .sec{background:#dfe9f7;text-align:le
   #print-root h1{font-size:16pt;margin:0 0 6px}#print-root h2{font-size:12pt;margin:10px 0 2px}
   #print-root td,#print-root th{font-size:9pt;color:#000}
 }
+.ulist{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
+.urow{display:grid;grid-template-columns:1fr auto 190px;gap:4px 12px;align-items:center;width:100%;text-align:left;font:inherit;color:inherit;background:none;border:0;border-bottom:1px solid var(--line);padding:10px 14px;min-height:48px;cursor:pointer}
+.urow:last-child{border-bottom:0}.urow:hover{background:var(--soft)}.urow .meta{color:var(--muted);font-size:.85rem}
+fieldset:disabled{opacity:.5}
+@media (max-width:560px){.urow{grid-template-columns:1fr auto}.urow .meta{grid-column:1/-1}}
+  #print-root td,#print-root th{font-size:9pt;color:#000}
+}

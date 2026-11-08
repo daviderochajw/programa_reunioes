@@ -4,7 +4,7 @@ export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;'
 export const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 export const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
 export const mondayOf = d => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - (x.getDay() + 6) % 7); return x; };
-const MES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+export const MES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 export const fmtWeek = m => {
   const e = addDays(m, 6), same = m.getMonth() === e.getMonth();
   return `${m.getDate()}${same ? '' : ' de ' + MES[m.getMonth()]} – ${e.getDate()} de ${MES[e.getMonth()]} de ${e.getFullYear()}`;
@@ -50,9 +50,9 @@ export function printHtml(html) {
 
 // Tema e tamanho da letra (guardados neste aparelho)
 export function applyPrefs() {
-  const t = localStorage.getItem('painel-theme') || 'auto', f = Number(localStorage.getItem('painel-fs')) || 16;
+  const t = localStorage.getItem('painel-theme') || 'auto', f = Number(localStorage.getItem('painel-fs')) || 14.5;
   if (t === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
   document.documentElement.style.fontSize = f + 'px';
 }
 export const cycleTheme = () => { const o = ['auto', 'light', 'dark'], c = localStorage.getItem('painel-theme') || 'auto'; localStorage.setItem('painel-theme', o[(o.indexOf(c) + 1) % 3]); applyPrefs(); return o[(o.indexOf(c) + 1) % 3]; };
-export const cycleFont = () => { const o = [14, 16, 18, 20], c = Number(localStorage.getItem('painel-fs')) || 16; localStorage.setItem('painel-fs', o[(o.indexOf(c) + 1) % 4]); applyPrefs(); };
+export const cycleFont = () => { const o = [13, 14.5, 16, 18], c = Number(localStorage.getItem('painel-fs')) || 14.5; localStorage.setItem('painel-fs', o[(o.indexOf(c) + 1) % 4]); applyPrefs(); };

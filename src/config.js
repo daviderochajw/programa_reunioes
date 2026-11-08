@@ -60,7 +60,7 @@ export const FIELDS = {
     ],
   },
   contactos: {
-    kind: 'list', sheet: 'Contactos', title: 'nome',
+    kind: 'list', compact: true, sheet: 'Contactos', title: 'nome',
     fields: [
       { key: 'nome', label: 'Nome', required: true },
       { key: 'grupo', label: 'Grupo' },
@@ -77,7 +77,7 @@ export const FIELDS = {
     ],
   },
   irmaos: {
-    kind: 'list', sheet: 'Irmãos', title: 'nome',
+    kind: 'list', compact: true, sheet: 'Irmãos', title: 'nome',
     fields: [
       { key: 'nome', label: 'Nome', required: true },
       { key: 'idade', label: 'Idade' },
@@ -111,7 +111,7 @@ export const FIELDS = {
     ],
   },
   movs: {
-    kind: 'list', sheet: 'Novos e batismos', title: 'nome',
+    kind: 'list', compact: true, sheet: 'Novos e batismos', title: 'nome',
     fields: [
       { key: 'nome', label: 'Nome', required: true },
       { key: 'tipo', label: 'Tipo', type: 'select', options: ['Novo publicador', 'Batismo', 'Outro'] },

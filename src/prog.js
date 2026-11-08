@@ -123,3 +123,32 @@ async function reminders({ ctx, getWeek, getItems }) {
   };
   draw();
 }
+
+// ---- Programa da semana em cartões (como no painel original)
+export function progHtml(items, admin, week, mt) {
+  const ad = id => admin ? `<span class="ia"><button class="btn sm" data-e="${id}" aria-label="Editar" title="Editar">✎</button><button class="btn sm danger" data-d="${id}" aria-label="Apagar" title="Apagar">✕</button></span>` : '';
+  const COL = { Geral: 'c2', Tesouros: 'c1', 'Ministério': 'c4', 'Viver como Cristãos': 'c5', 'Fim de semana': 'c3', Equipa: 'c6' };
+  const sec = i => i.data?.seccao || 'Geral';
+  const MID = ['Geral', 'Tesouros', 'Ministério', 'Viver como Cristãos'];
+  let n = 0;
+  const row = (i, numbered) => {
+    const d = i.data || {};
+    return `<div class="pi"><div class="pt">${numbered ? `<span class="no" style="--h:var(--${COL[sec(i)]})">${++n}</span>` : ''}${esc(d.parte)}${d.min ? ` <span class="lb">(${esc(d.min)} min)</span>` : ''}${d.notas ? `<div class="lb">${esc(d.notas)}</div>` : ''}</div>
+      <div class="pw">${d.responsavel ? esc(d.responsavel) : '<span class="nb">por atribuir</span>'}${d.ajudante ? `<span class="lb"> / ${esc(d.ajudante)}</span>` : ''}${ad(i.id)}</div></div>`;
+  };
+  const card = (title, color, when, list, strips) => {
+    if (!list.length) return '';
+    let last = null, h = '';
+    list.forEach(i => {
+      const s = sec(i);
+      if (strips && s !== 'Geral' && s !== last) h += `<h5 class="ps" style="--h:var(--${COL[s]})">${esc(s)}</h5>`;
+      last = s; h += row(i, strips && s !== 'Geral');
+    });
+    return `<section class="pg" style="--h:var(--${color})"><h4><span>${esc(title)}</span>${when ? `<span class="pill">${esc(when)}</span>` : ''}</h4>${h}</section>`;
+  };
+  const by = f => [...items].filter(i => f(sec(i))).sort((a, b) => a.position - b.position);
+  const w1 = meetingWhen(iso(week), false, mt), w2 = meetingWhen(iso(week), true, mt);
+  return card('Reunião de semana', 'c2', `${fmtDay(w1.date)} · ${w1.time}`, by(s => MID.includes(s)), true)
+    + card('Reunião de fim de semana', 'c3', `${fmtDay(w2.date)} · ${w2.time}`, by(s => s === 'Fim de semana'), false)
+    + card('Equipa', 'c6', '', by(s => s === 'Equipa'), false);
+}

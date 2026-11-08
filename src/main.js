@@ -49,7 +49,7 @@ async function boot(startTab) {
     ...(admin ? [{ id: '_users', label: 'Utilizadores' + (pending ? ` (${pending})` : '') }, { id: '_usage', label: 'Utilização' }, { id: '_history', label: 'Histórico' }, { id: '_settings', label: 'Definições' }] : [])];
 
   app.innerHTML = `<div class="wrap">
-    <header class="top"><div><h1>Painel da congregação</h1><p class="muted">${esc(profile.full_name)}${admin ? ' · Administrador' : ''}</p></div>
+    <header class="top"><div><h1>Painel da congregação</h1><p class="sub">Braga Central · ${esc(profile.full_name)}${admin ? ' · Administrador' : ''}</p></div>
       <div class="actions" style="margin:0"><button class="btn" id="srch" type="button" aria-label="Pesquisar">🔍 Pesquisar</button>
         <details class="more"><summary class="btn" aria-label="Mais opções">⋯</summary><div class="pop">
           <button class="btn" id="th" type="button">Tema: claro / escuro / auto</button><button class="btn" id="fs" type="button">Tamanho da letra</button>
@@ -62,15 +62,18 @@ async function boot(startTab) {
   $('#th').onclick = () => toast('Tema: ' + { auto: 'automático', light: 'claro', dark: 'escuro' }[cycleTheme()]);
   $('#fs').onclick = cycleFont;
   if (admin) {
-    $('#imp').onclick = () => { $('.more').open = false; openImport(menus, () => go(localStorage.getItem('painel-last') || '_home')); };
+    $('#imp').onclick = () => { $('.more').open = false; openImport(menus, () => go(current)); };
     $('#exp').onclick = () => { $('.more').open = false; exportAll(menus); };
     $('#tpl').onclick = () => { $('.more').open = false; saveWorkbook(templateSheets(), 'modelo-painel-braga-central.xlsx'); };
   }
 
+  let current = '_home';
   function go(id, opts) {
     if (!tabs.some(t => t.id === id)) id = '_home';
-    localStorage.setItem('painel-last', id);
-    nav.innerHTML = tabs.map(t => `<button data-id="${t.id}" aria-pressed="${t.id === id}">${esc(t.label)}</button>`).join('');
+    current = id;
+    const hue = i => `var(--c${(i % 6) + 1})`;
+    nav.innerHTML = tabs.map((t, i) => `<button data-id="${t.id}" style="--h:${hue(i)}" aria-pressed="${t.id === id}">${esc(t.label)}</button>`).join('');
+    view.style.setProperty('--h', hue(tabs.findIndex(t => t.id === id)));
     if (id === '_home') renderHome(view, ctx);
     else if (id === '_users') renderUsers(view, profile, all, () => boot('_users'));
     else if (id === '_usage') renderUsage(view);
@@ -79,7 +82,7 @@ async function boot(startTab) {
     else renderMenu(view, menus.find(m => m.key === id), ctx, opts);
   }
   nav.onclick = e => { const b = e.target.closest('[data-id]'); if (b) go(b.dataset.id); };
-  go(startTab || localStorage.getItem('painel-last') || '_home');
+  go(typeof startTab === 'string' ? startTab : '_home');   // ao entrar, abre sempre o Início
 }
 
 if (!configured) {

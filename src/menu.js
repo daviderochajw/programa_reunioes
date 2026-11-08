@@ -4,7 +4,7 @@ import { esc, toast, openDialog, iso, addDays, mondayOf, fmtWeek, fmtDatePT, par
 import { mondayISO, addDaysISO, parseDate } from './importer.js';
 import { waPhone } from './names.js';
 import { buildICS } from './ics.js';
-import { progInfo, progExtras } from './prog.js';
+import { progInfo, progExtras, progHtml } from './prog.js';
 
 const fmtVal = (f, v) => {
   const s = String(v ?? '');
@@ -75,12 +75,24 @@ export async function renderMenu(root, menu, ctx, opts = {}) {
         <div class="tw"><table>${rows.map(r => `<tr>${r.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</table></div></details>`;
     }
     const rest = cfg.fields.filter(f => f.key !== cfg.title && f.key !== cfg.group && d[f.key]);
+    const acts = admin ? `<span class="ia"><button class="btn sm" data-e="${it.id}">Editar</button><button class="btn sm danger" data-d="${it.id}">Apagar</button></span>` : '';
+    const dl = rest.length ? `<dl>${rest.map(f => `<dt>${esc(f.label)}</dt><dd>${fmtVal(f, d[f.key])}</dd>`).join('')}</dl>` : '';
+    if (cfg.compact) {
+      const hint = rest[0] ? String(d[rest[0].key]).split('\n')[0] : '';
+      return `<details class="item ct"><summary><b>${esc(d[cfg.title] || '(sem título)')}</b> <small class="muted">${esc(fmtDatePT(hint))}</small></summary>${acts ? `<div style="margin-top:8px">${acts}</div>` : ''}${dl}</details>`;
+    }
     let chip = '';
     if (cfg.upcoming && d.data) { const n = days(d.fim && d.fim >= d.data && days(d.data) < 0 ? d.fim : d.data); chip = `<span class="badge">${n < 0 ? 'passado' : n === 0 ? 'hoje' : n === 1 ? 'amanhã' : 'faltam ' + n + ' dias'}</span>`; }
-    if (menu.key === 'prog' && !d.responsavel && d.seccao !== 'Equipa') chip = '<span class="badge st-pending">por atribuir</span>';
-    return `<article class="item"><div class="ih"><h3>${esc(d[cfg.title] || '(sem título)')} ${chip}</h3>
-      ${admin ? `<span class="ia"><button class="btn sm" data-e="${it.id}">Editar</button><button class="btn sm danger" data-d="${it.id}">Apagar</button></span>` : ''}</div>
-      ${rest.length ? `<dl>${rest.map(f => `<dt>${esc(f.label)}</dt><dd>${fmtVal(f, d[f.key])}</dd>`).join('')}</dl>` : ''}</article>`;
+    return `<article class="item"><div class="ih"><h3>${esc(d[cfg.title] || '(sem título)')} ${chip}</h3>${acts}</div>${dl}</article>`;
+  };
+
+  // Saídas e testemunho: blocos por dia
+  const byDate = shown => {
+    const days = [...new Set(shown.map(i => i.data?.data || ''))].sort(), color = menu.key === 'saidas' ? 'c1' : 'c3';
+    return days.map(dt => { const its = shown.filter(i => (i.data?.data || '') === dt);
+      return `<section class="mv" style="--h:var(--${color})"><h4><span>${dt ? esc(fmtDay(dt)) : 'Sem data'}</span><span class="lb">${its.length}</span></h4>${its.map(i => { const d = i.data;
+        const sub = menu.key === 'saidas' ? [d.dirigente && 'Dirigente: ' + d.dirigente, d.grupos && 'Grupos: ' + d.grupos, d.fonte].filter(Boolean).join(' · ') : d.publicador || '';
+        return `<div class="mr"><time>${esc(d.hora || '—')}</time><span class="nm">${esc(d.local)}${sub ? `<br><small class="muted">${esc(sub)}</small>` : ''}</span>${admin ? `<span class="ia"><button class="btn sm" data-e="${i.id}" aria-label="Editar" title="Editar">✎</button><button class="btn sm danger" data-d="${i.id}" aria-label="Apagar" title="Apagar">✕</button></span>` : ''}</div>`; }).join('')}</section>`; }).join('');
   };
 
   function draw() {
@@ -93,6 +105,8 @@ export async function renderMenu(root, menu, ctx, opts = {}) {
       if (cfg.sortBy) shown = [...shown].sort((a, b) => String(a.data?.[cfg.sortBy] || '').localeCompare(String(b.data?.[cfg.sortBy] || '')));
       else if (!cfg.group && !sheet) shown = [...shown].sort((a, b) => String(a.data?.[cfg.title] || '').localeCompare(String(b.data?.[cfg.title] || ''), 'pt'));
     }
+    if (shown.length && menu.key === 'prog') { list.innerHTML = progHtml(shown, admin, week, ctx.settings.meetings); return; }
+    if (shown.length && (menu.key === 'saidas' || menu.key === 'testemunho')) { list.innerHTML = byDate(shown); return; }
     if (!shown.length) {
       list.innerHTML = `<p class="muted">${weekly ? 'Ainda não há dados para esta semana.' : 'Sem registos.'}${admin && !sheet ? ' Use «+ Adicionar» ou o menu «⋯ > Importar Excel».' : ''}</p>`; return;
     }

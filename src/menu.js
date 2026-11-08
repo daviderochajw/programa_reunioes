@@ -1,6 +1,6 @@
 import { supabase } from './supabase.js';
 import { FIELDS } from './config.js';
-import { esc, toast, openDialog, iso, addDays, mondayOf, fmtWeek, fmtDatePT, parseISO, downloadBlob } from './ui.js';
+import { esc, toast, openDialog, iso, addDays, mondayOf, fmtWeek, fmtDay, fmtDatePT, parseISO, downloadBlob } from './ui.js';
 import { mondayISO, addDaysISO, parseDate } from './importer.js';
 import { waPhone } from './names.js';
 import { buildICS } from './ics.js';

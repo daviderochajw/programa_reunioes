@@ -13,7 +13,7 @@ export function collectMine({ prog = [], saidas = [], testemunho = [], name, mt,
       const w = sec === 'Equipa' ? { date: meetingWhen(i.week_start, true, mt).date, time: '' } : meetingWhen(i.week_start, sec === 'Fim de semana', mt);
       if (!inRange(w.date)) return;
       out.push({ date: w.date, time: w.time, kind: 'prog', ord: i.position || 0, id: i.id, min: d.min || '', title: d.parte,
-        sub: [sec === 'Geral' ? 'Reunião de semana' : sec, role, d.min && d.min + ' min'].filter(Boolean).join(' · ') });
+        sub: [sec === 'Geral' ? 'Reunião de semana' : sec, d.sala, role, d.min && d.min + ' min'].filter(Boolean).join(' · ') });
     });
   });
   saidas.forEach(i => { const d = i.data || {}; if (mine(d.dirigente) && inRange(d.data)) out.push({ date: d.data, time: d.hora || '', kind: 'saidas', ord: i.position || 0, id: i.id, min: '', title: 'Saída ao serviço de campo', sub: ['Dirigente', d.local].filter(Boolean).join(' · ') }); });

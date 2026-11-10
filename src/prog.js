@@ -34,7 +34,7 @@ export async function getPeople(ctx) {
 }
 
 const grouped = items => SECCOES.map(s => [s, items.filter(i => (i.data?.seccao || 'Geral') === s)]).filter(([, l]) => l.length);
-const line = d => `${d.parte}${d.min ? ' (' + d.min + ' min)' : ''}${d.responsavel ? ' — ' + d.responsavel : ' — por atribuir'}${d.ajudante ? ' / ' + d.ajudante : ''}`;
+const line = d => `${d.parte}${d.min ? ' (' + d.min + ' min)' : ''}${d.sala ? ' [' + d.sala + ']' : ''}${d.responsavel ? ' — ' + d.responsavel : ' — por atribuir'}${d.ajudante ? ' / ' + d.ajudante : ''}`;
 
 function weekText(items, week, mt) {
   let t = `*Programa · ${fmtWeek(week)}*\n`;
@@ -100,7 +100,7 @@ async function reminders({ ctx, getWeek, getItems }) {
     const when = sec === 'Equipa' ? `semana de ${fmtDay(iso(week))}` : (w => `${fmtDay(w.date)}, ${w.time}`)(meetingWhen(iso(week), sec === 'Fim de semana', mt));
     [[d.responsavel, ''], [d.ajudante, ' (ajudante)']].forEach(([v, sfx]) => tokens(v).forEach(tk => {
       const k = matchName(tk, kn), id = k ? k.k : norm(tk); if (!by.has(id)) by.set(id, { id, n: k ? k.n : tk, phone: k?.phone || '', l: [] });
-      by.get(id).l.push(`• ${when}: ${d.parte}${d.min ? ' (' + d.min + ' min)' : ''}${sfx}`);
+      by.get(id).l.push(`• ${when}: ${d.parte}${d.sala ? ' [' + d.sala + ']' : ''}${d.min ? ' (' + d.min + ' min)' : ''}${sfx}`);
     }));
   });
   const list = [...by.values()].sort((a, b) => a.n.localeCompare(b.n, 'pt'));
@@ -130,11 +130,21 @@ export function progHtml(items, admin, week, mt) {
   const COL = { Geral: 'c2', Tesouros: 'c1', 'Ministério': 'c4', 'Viver como Cristãos': 'c5', 'Fim de semana': 'c3', Equipa: 'c6' };
   const sec = i => i.data?.seccao || 'Geral';
   const MID = ['Geral', 'Tesouros', 'Ministério', 'Viver como Cristãos'];
-  let n = 0;
+  let n = 0, prevMin = null;
+  const who = (label, name) => `<div class="who">${label ? `<span class="lb">${label}</span> ` : ''}${esc(name)}</div>`;
   const row = (i, numbered) => {
-    const d = i.data || {};
-    return `<div class="pi"><div class="pt">${numbered ? `<span class="no" style="--h:var(--${COL[sec(i)]})">${++n}</span>` : ''}${esc(d.parte)}${d.min ? ` <span class="lb">(${esc(d.min)} min)</span>` : ''}${d.notas ? `<div class="lb">${esc(d.notas)}</div>` : ''}</div>
-      <div class="pw">${d.responsavel ? esc(d.responsavel) : '<span class="nb">por atribuir</span>'}${d.ajudante ? `<span class="lb"> / ${esc(d.ajudante)}</span>` : ''}${ad(i.id)}</div></div>`;
+    const d = i.data || {}, mi = sec(i) === 'Ministério';
+    let no = '';
+    if (numbered) {
+      // a mesma parte feita nas duas salas (mesmo título, salas diferentes) leva o mesmo número
+      const same = mi && prevMin && norm(prevMin.parte) === norm(d.parte) && prevMin.sala && d.sala && prevMin.sala !== d.sala;
+      if (!same) n++;
+      no = `<span class="no" style="--h:var(--${COL[sec(i)]})">${n}</span>`;
+    }
+    prevMin = mi ? { parte: d.parte, sala: d.sala } : null;
+    const main = d.responsavel ? who(mi ? 'Participante:' : '', d.responsavel) : '<div class="who"><span class="nb">por atribuir</span></div>';
+    return `<div class="pi"><div class="pt">${no}${esc(d.parte)}${d.min ? ` <span class="lb">(${esc(d.min)} min)</span>` : ''}${d.sala ? ` <span class="pill" style="--h:var(--${d.sala === 'Principal' ? 'c2' : 'c4'})">${esc(d.sala)}</span>` : ''}${d.notas ? `<div class="lb">${esc(d.notas)}</div>` : ''}</div>
+      <div class="pw">${main}${d.ajudante ? who('Ajudante:', d.ajudante) : ''}${ad(i.id)}</div></div>`;
   };
   const card = (title, color, when, list, strips) => {
     if (!list.length) return '';

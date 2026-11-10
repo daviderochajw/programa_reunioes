@@ -45,6 +45,8 @@ const HELP = [
   ['3. Datas no formato AAAA-MM-DD (ex.: 2026-11-09). Horas no formato HH:MM (ex.: 20:30).'],
   ['4. Programa e Anúncios: na coluna «Semana» ponha qualquer data dessa semana; a app usa a segunda-feira.'],
   ['5. Na app: Menu «⋯» > Importar Excel. Escolha o ficheiro, confira o resumo e confirme.'],
+  ['6. Programa, Ministério: «Responsável / Participante» e «Ajudante»; em «Sala» escolha Principal ou 2.ª Sala (a mesma parte pode aparecer duas vezes, uma por sala).'],
+  ['7. Os meses anteriores ficam sempre na app. Só precisa de pôr no ficheiro as semanas novas.'],
   [''],
   ['Também é possível importar o ficheiro original da congregação (ENTRADA, Designações, Contactos, Grupos de Saída, …).'],
 ];

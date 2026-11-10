@@ -3,6 +3,7 @@ import { FIELDS } from './config.js';
 import { analyze } from './importer.js';
 import { readWorkbook, saveWorkbook, templateSheets, exportSheets } from './excel.js';
 import { esc, toast, openDialog, fmtDatePT } from './ui.js';
+import { norm } from './names.js';
 
 const BATCH = 200;
 
@@ -32,8 +33,9 @@ export function openImport(menus, onDone) {
         <br><small class="muted">${esc(b.source)}${b.warn ? ' · ⚠ ' + esc(b.warn) : ''}</small></span></label>`).join('')}
       ${an.ignored.length ? `<p class="muted small">Folhas ignoradas: ${an.ignored.map(esc).join(', ')}</p>` : ''}
       <fieldset><legend>Como gravar</legend>
-        <label class="chk"><input type="radio" name="mode" value="replace" checked> Substituir (semanas do ficheiro / listas completas) <small class="muted">— recomendado</small></label>
-        <label class="chk"><input type="radio" name="mode" value="append"> Acrescentar ao que já existe</label></fieldset>
+        <label class="chk"><input type="radio" name="mode" value="new" checked> <span><b>Só o que ainda não existe</b> <small class="muted">— semanas (ou registos) que já estão na app ficam como estão</small></span></label>
+        <label class="chk"><input type="radio" name="mode" value="replace"> <span><b>Substituir</b> <small class="muted">— as semanas que vêm no ficheiro são substituídas; as outras semanas e meses não são tocados. Numa lista (Contactos, Irmãos…) substitui a lista toda.</small></span></label>
+        <label class="chk"><input type="radio" name="mode" value="append"> <span><b>Acrescentar tudo</b> <small class="muted">— pode duplicar o que já existe</small></span></label></fieldset>
       <div class="actions"><button class="btn primary" id="go" type="button">Importar</button></div><p id="st" class="muted"></p>`;
     q('#go').onclick = () => apply(an);
   }
@@ -41,20 +43,33 @@ export function openImport(menus, onDone) {
   async function apply(an) {
     const chosen = an.blocks.filter(b => q(`[data-b="${b.id}"]`)?.checked);
     if (!chosen.length) return toast('Escolha pelo menos um bloco.');
-    const replace = q('[name=mode]:checked').value === 'replace', st = q('#st'), go = q('#go'); go.disabled = true;
+    const mode = q('[name=mode]:checked').value, replace = mode === 'replace', st = q('#st'), go = q('#go'); go.disabled = true;
     try {
-      // 1) reunir as linhas por menu e saber o que vai ser substituído
+      // 1) reunir as linhas por menu e saber o que vai ser substituído / ignorado
       const byMenu = {}; chosen.forEach(b => (byMenu[b.menu] ||= []).push(...b.rows));
-      const oldIds = [];
-      if (replace) for (const [menu, rows] of Object.entries(byMenu)) {
-        const weeks = [...new Set(rows.map(r => r.week_start).filter(Boolean))];
-        let qy = supabase.from('items').select('id').eq('menu_key', menu).limit(5000);
-        if (FIELDS[menu].kind === 'weekly') qy = qy.in('week_start', weeks);
-        const { data, error } = await qy; if (error) throw error;
-        oldIds.push(...data.map(r => r.id));
+      const oldIds = []; let skipped = 0;
+      for (const [menu, rows] of Object.entries(byMenu)) {
+        const cfg = FIELDS[menu], weekly = cfg.kind === 'weekly', weeks = [...new Set(rows.map(r => r.week_start).filter(Boolean))];
+        if (replace) {
+          let qy = supabase.from('items').select('id').eq('menu_key', menu).limit(5000);
+          if (weekly) qy = qy.in('week_start', weeks);
+          const { data, error } = await qy; if (error) throw error;
+          oldIds.push(...data.map(r => r.id));
+        } else if (mode === 'new') {
+          let keep;
+          if (weekly) {
+            const { data, error } = await supabase.from('items').select('week_start').eq('menu_key', menu).in('week_start', weeks).limit(5000); if (error) throw error;
+            const have = new Set(data.map(r => r.week_start)); keep = rows.filter(r => !have.has(r.week_start));
+          } else {
+            const { data, error } = await supabase.from('items').select('data').eq('menu_key', menu).limit(5000); if (error) throw error;
+            const have = new Set(data.map(r => norm(r.data?.[cfg.title]))); keep = rows.filter(r => !have.has(norm(r.data?.[cfg.title])));
+          }
+          skipped += rows.length - keep.length; byMenu[menu] = keep;
+        }
       }
       const total = Object.values(byMenu).reduce((n, r) => n + r.length, 0);
-      if (!confirm(`Vai gravar ${total} registo(s)` + (oldIds.length ? ` e substituir ${oldIds.length} registo(s) existentes` : '') + '. Continuar?')) { go.disabled = false; return; }
+      if (!total) { go.disabled = false; return toast('Não há nada de novo para importar: tudo já existe na app.'); }
+      if (!confirm(`Vai gravar ${total} registo(s)` + (oldIds.length ? ` e substituir ${oldIds.length} registo(s) existentes` : '') + (skipped ? ` (${skipped} já existiam e foram ignorados)` : '') + '. Continuar?')) { go.disabled = false; return; }
       // 2) inserir primeiro (se falhar, desfaz) e só depois apagar o antigo
       const newIds = [];
       try {

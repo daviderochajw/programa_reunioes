@@ -7,6 +7,7 @@
 //  sheet     nome da folha no ficheiro Excel (modelo / exportação)
 const DIAS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 export const SECCOES = ['Geral', 'Tesouros', 'Ministério', 'Viver como Cristãos', 'Fim de semana', 'Equipa'];
+export const SALAS = ['', 'Principal', '2.ª Sala'];
 export const EVENT_TYPES = ['Assembleia', 'Congresso', 'Memorial', 'Evento', 'EMR', 'EAC', 'Visita do superintendente de circuito'];
 
 export const FIELDS = {
@@ -16,8 +17,9 @@ export const FIELDS = {
       { key: 'seccao', label: 'Secção', type: 'select', options: SECCOES },
       { key: 'parte', label: 'Parte / título', required: true },
       { key: 'min', label: 'Minutos', type: 'number' },
-      { key: 'responsavel', label: 'Responsável' },
-      { key: 'ajudante', label: 'Ajudante / sala' },
+      { key: 'responsavel', label: 'Responsável / Participante', aliases: ['responsavel', 'participante'] },
+      { key: 'ajudante', label: 'Ajudante', aliases: ['ajudante / sala'] },
+      { key: 'sala', label: 'Sala (Ministério)', type: 'select', options: SALAS, aliases: ['sala'] },
       { key: 'notas', label: 'Notas', type: 'textarea' },
     ],
   },

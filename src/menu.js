@@ -25,7 +25,8 @@ export async function renderMenu(root, menu, ctx, opts = {}) {
   bar.innerHTML = `
     ${weekly
       ? `<button class="btn" data-a="prev" aria-label="Semana anterior">‹</button><strong id="wl"></strong>
-         <button class="btn" data-a="next" aria-label="Semana seguinte">›</button><button class="btn" data-a="today">Hoje</button>`
+         <button class="btn" data-a="next" aria-label="Semana seguinte">›</button><button class="btn" data-a="today">Hoje</button>
+         <label style="display:flex;align-items:center;gap:6px;font-weight:400">Ir para <input id="jump" type="date" style="width:auto"></label>`
       : `<input class="search" id="q" type="search" placeholder="Pesquisar" aria-label="Pesquisar" value="${esc(q)}">`}
     ${cfg.upcoming ? '<button class="btn" data-a="past">Mostrar passados</button><button class="btn" data-a="ics">Calendário (.ics)</button>' : ''}
     ${admin ? `<span class="sp"></span>${weekly ? '<button class="btn" data-a="copy">Copiar da semana anterior</button><button class="btn danger" data-a="wipe">Apagar semana</button>' : ''}
@@ -42,6 +43,8 @@ export async function renderMenu(root, menu, ctx, opts = {}) {
     else if (a === 'past') { showPast = !showPast; e.target.textContent = showPast ? 'Ocultar passados' : 'Mostrar passados'; draw(); }
     else if (a === 'ics') eventsIcs();
   };
+  const jp = bar.querySelector('#jump');
+  if (jp) jp.onchange = () => { const d = parseDate(jp.value); if (d) { week = mondayOf(parseISO(d)); load(); } };
   const qi = bar.querySelector('#q');
   if (qi) qi.oninput = () => { q = qi.value; draw(); };
   if (menu.key === 'prog') progExtras(root.querySelector('#bar2'), { ctx, menu, getWeek: () => week, getItems: () => items, reload: () => load() });
@@ -130,17 +133,26 @@ export async function renderMenu(root, menu, ctx, opts = {}) {
         ? `<select name="${f.key}">${f.options.map(o => `<option value="${esc(o)}" ${o === v ? 'selected' : ''}>${esc(o || '—')}</option>`).join('')}</select>`
         : f.type === 'textarea' ? `<textarea name="${f.key}" rows="3">${esc(v)}</textarea>`
         : `<input name="${f.key}" type="${f.type || 'text'}" value="${esc(v)}" ${f.required ? 'required' : ''}>`;
-      return `<label>${esc(f.label)}${ctl}</label>`;
+      return `<label data-f="${f.key}"><span>${esc(f.label)}</span>${ctl}</label>`;
     };
     const dlg = openDialog(`<form method="dialog" id="df"><h2>${item ? 'Editar' : 'Adicionar'} · ${esc(menu.label)}</h2>
       ${cfg.fields.map(field).join('')}
       <label>Ordem<input name="_pos" type="number" value="${item ? item.position : (items.length + 1) * 10}"></label>
       <div class="actions"><button class="btn primary" type="submit">Guardar</button><button class="btn" type="button" id="cx">Cancelar</button></div></form>`);
     dlg.querySelector('#cx').onclick = () => dlg.close();
+    if (menu.key === 'prog') {   // no Ministério: «Participante» + escolha da sala
+      const sel = dlg.querySelector('[name=seccao]'), upd = () => {
+        const mi = sel.value === 'Ministério';
+        dlg.querySelector('[data-f=responsavel] span').textContent = mi ? 'Participante' : 'Responsável';
+        dlg.querySelector('[data-f=sala]').hidden = !mi;
+      };
+      sel.onchange = upd; upd();
+    }
     dlg.querySelector('#df').onsubmit = async e => {
       e.preventDefault();
       const fd = new FormData(e.target), data = {};
       cfg.fields.forEach(f => { data[f.key] = String(fd.get(f.key) ?? '').trim(); });
+      if (menu.key === 'prog' && data.seccao !== 'Ministério') data.sala = '';
       const row = { menu_key: menu.key, data, position: Number(fd.get('_pos')) || 0 };
       if (weekly) {
         if (cfg.dateField) { const dd = parseDate(data[cfg.dateField]); if (!dd) return toast('Data inválida.'); row.week_start = mondayISO(dd); }

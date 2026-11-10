@@ -5,7 +5,7 @@
 // Aceita DOIS formatos:
 //  1) o MODELO simples da app (uma folha por menu, uma linha por registo; ver excel.js > templateSheets)
 //  2) o ficheiro original da congregação (ENTRADA, Designações, Contactos, Grupos de Saída, Saídas, Testemunho público, …)
-import { FIELDS } from './config.js';
+import { FIELDS, SALAS } from './config.js';
 import { norm } from './names.js';
 
 const pad = n => String(n).padStart(2, '0');
@@ -35,7 +35,7 @@ const minOf = t => { const m = t.match(/\((\d+)\s*min/i); return m ? m[1] : ''; 
 function weekItems(a, c) {
   const g = (r, cc) => cell(a, r, cc), out = [];
   const add = (seccao, parte, responsavel, ajudante = '', notas = '', min = '', required = false) => {
-    if (required || parte || responsavel || ajudante) out.push({ seccao, parte, min, responsavel, ajudante, notas });
+    if (required || parte || responsavel || ajudante) out.push({ seccao, parte, min, responsavel, ajudante, sala: '', notas });
   };
   add('Geral', 'Presidente', g(4, c + 1), '', '', '', true);
   add('Geral', 'Oração inicial', g(5, c + 1), '', '', '', true);
@@ -170,17 +170,32 @@ export function parseOther(name, a) {
 
 // ---------------------------------------------------------------- MODELO simples (uma folha por menu)
 const TEMPLATE = {}; Object.entries(FIELDS).forEach(([k, c]) => { if (c.sheet && c.fields.length) TEMPLATE[norm(c.sheet)] = k; TEMPLATE[k] = k; });
+// Escolhe a opção da lista que corresponde ao texto escrito (sem maiúsculas/acentos; aceita o início: «viver» = «Viver como Cristãos»)
+export function normSala(v) {
+  const t = norm(v).replace(/[.\u00aa\u00ba]/g, '').replace(/\s+/g, ' ');
+  if (!t) return '';
+  if (/^(2|2a|segunda|sala 2|2 sala|segunda sala)( sala)?$/.test(t) || /^2 ?(a )?sala$/.test(t) || t === 'sala 2') return SALAS[2];
+  if (/^(principal|sala principal|1|1a|primeira|sala 1|1 sala|primeira sala)( sala)?$/.test(t)) return SALAS[1];
+  return String(v).trim();
+}
+function pickOption(f, v) {
+  const t = norm(v); if (!t) return '';
+  if (f.key === 'sala') return normSala(v);
+  const o = f.options.filter(Boolean).find(x => norm(x) === t) || f.options.filter(Boolean).find(x => norm(x).startsWith(t));
+  return o || String(v).trim();
+}
 export function parseTemplate(menu, a) {
   const cfg = FIELDS[menu], hr = a.findIndex(r => (r || []).filter(x => str(x)).length >= 2);
   if (hr < 0) return { rows: [], warn: 'folha vazia' };
   const hdr = a[hr].map(norm), col = {};
-  cfg.fields.forEach(f => { const i = hdr.findIndex(x => x === norm(f.label) || x === f.key); if (i >= 0) col[f.key] = i; });
+  cfg.fields.forEach(f => { const i = hdr.findIndex(x => x === norm(f.label) || x === f.key || (f.aliases || []).includes(x)); if (i >= 0) col[f.key] = i; });
   const title = cfg.fields.find(f => f.key === cfg.title);
   if (!(title.key in col)) return { rows: [], warn: `não encontrei a coluna «${title.label}»` };
   const wk = cfg.kind === 'weekly' && !cfg.dateField, wcol = hdr.findIndex(x => x.startsWith('semana'));
   const rows = []; let skipped = 0; const pos = {};
   a.slice(hr + 1).forEach(r => {
-    const data = {}; cfg.fields.forEach(f => { let v = col[f.key] >= 0 ? str(r[col[f.key]]) : ''; if (f.type === 'date') v = parseDate(v) || v; if (f.type === 'time') v = timeText(v); data[f.key] = v; });
+    const data = {}; cfg.fields.forEach(f => { let v = col[f.key] >= 0 ? str(r[col[f.key]]) : ''; if (f.type === 'date') v = parseDate(v) || v; if (f.type === 'time') v = timeText(v); if (f.type === 'select') v = pickOption(f, v); data[f.key] = v; });
+    if (menu === 'prog' && data.seccao !== 'Ministério' && data.sala) data.sala = '';
     if (!Object.values(data).some(Boolean)) return;
     let week = null;
     if (wk) { const d = parseDate((r || [])[wcol]); if (!d) { skipped++; return; } week = mondayISO(d); }
@@ -192,7 +207,7 @@ export function parseTemplate(menu, a) {
 }
 
 // ---------------------------------------------------------------- análise global
-const IGNORE = new Set(['leia-me', 'leia me', 'leiame', 'automacao', 'removidos']);
+const IGNORE = new Set(['leia-me', 'leia me', 'leiame', 'exemplo', 'exemplos', 'automacao', 'removidos']);
 const SKIP_OTHER = new Set(['responsabilidades', 'batismos', 'chaves salao', 'oracoes ra', 'pioneiros', 'boleia', 'centro saida 1', 'entrada']);
 
 export function analyze(sheets) {
